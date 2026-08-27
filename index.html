@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Commerce Frontend</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 20px; color: #333; }
+        .status-badge { padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 0.85em; }
+        .online { background: #34a853; color: white; }
+        .offline { background: #ea4335; color: white; }
+        .header { background: #1a73e8; color: white; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        button { background: #1a73e8; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
+        button.danger { background: #ea4335; }
+        input, select { width: 100%; padding: 8px; margin: 6px 0 12px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        ul { list-style: none; padding: 0; }
+        li { background: #f8f9fa; padding: 10px; border-radius: 4px; margin-bottom: 8px; border-left: 4px solid #1a73e8; display: flex; justify-content: space-between; }
+        .log-box { background: #1e1e1e; color: #00ff66; padding: 10px; font-family: monospace; height: 120px; overflow-y: auto; border-radius: 4px; font-size: 0.8em; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h2>E-Commerce Frontend Client</h2>
+    <div id="connectionStatus" class="status-badge online">Status: ONLINE</div>
+</div>
+
+<div class="grid">
+    <!-- UI SQL INPUT -->
+    <div class="card">
+        <h3>1. Form Produk Server (SQL API)</h3>
+        <input type="text" id="prodName" placeholder="Nama Produk">
+        <input type="number" id="prodPrice" placeholder="Harga (Rp)">
+        <select id="prodCategory">
+            <option value="Buku">Buku</option>
+            <option value="Elektronik">Elektronik</option>
+        </select>
+        <button onclick="createProductAPI()">Tambah via API Server</button>
+        <h4>Katalog Produk (Server):</h4>
+        <ul id="serverProductList"></ul>
+    </div>
+
+    <!-- UI LOCALSTORAGE STATE -->
+    <div class="card">
+        <h3>2. State Keranjang (LocalStorage)</h3>
+        <ul id="cartList"></ul>
+        <button class="danger" onclick="clearCart()">Kosongkan</button>
+        <button onclick="checkoutSync()">Checkout (Sync Ke Server)</button>
+    </div>
+
+    <!-- UI INDEXEDDB NOSQL -->
+    <div class="card">
+        <h3>3. Cache Offline (IndexedDB NoSQL)</h3>
+        <button onclick="filterCategoryNoSQL('Buku')">Filter: Buku</button>
+        <button onclick="readIndexedDB()">Tampilkan Semua Cache</button>
+        <ul id="indexedDbList"></ul>
+    </div>
+
+    <!-- SYNC LOGS -->
+    <div class="card" style="grid-column: 1 / -1;">
+        <h3>4. System Log & Synchronization Manager</h3>
+        <div class="log-box" id="sysLog"></div>
+    </div>
+</div>
+
+<script>
+    // XSS Protection Sanitizer
+    function sanitize(str) {
+        return str.replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+    }
+
+    function log(msg) {
+        const box = document.getElementById('sysLog');
+        box.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}<br>`;
+        box.scrollTop = box.scrollHeight;
+    }
+
+    // ==========================================
+    // LOCALSTORAGE (CLIENT STATE MANAGEMENT)
+    // ==========================================
+    function getCart() { return JSON.parse(localStorage.getItem('cart_state')) || []; }
+    
+    function addToCart(item) {
+        const cart = getCart();
+        cart.push(item);
+        localStorage.setItem('cart_state', JSON.stringify(cart));
+        log(`[LocalStorage] Added item: ${item.name}`);
+        renderCart();
+    }
+
+    function clearCart() {
+        localStorage.removeItem('cart_state');
+        log(`[LocalStorage] Cart cleared.`);
+        renderCart();
+    }
+
+    function renderCart() {
+        const cart = getCart();
+        document.getElementById('cartList').innerHTML = cart.map((item, index) => `
+            <li><span>${sanitize(item.name)} - Rp${item.price}</span></li>
+        `).join('');
+    }
+
+    // ==========================================
+    // INDEXEDDB (NOSQL CLIENT CACHE)
+    // ==========================================
+    let db;
+    const req = indexedDB.open("EcommerceNoSQLDB", 1);
+    
+    req.onupgradeneeded = (e) => {
+        db = e.target.result;
+        const store = db.createObjectStore("products", { keyPath: "id" });
+        store.createIndex("categoryIndex", "category", { unique: false });
+        log(`[IndexedDB] Schema initialized with 'categoryIndex'.`);
+    };
+
+    req.onsuccess = (e) => {
+        db = e.target.result;
+        log(`[IndexedDB] Connected.`);
+    };
+
+    function saveToIndexedDB(products) {
+        if(!db) return;
+        const tx = db.transaction(["products"], "readwrite");
+        const store = tx.objectStore("products");
+        products.forEach(p => store.put(p));
+        tx.oncomplete = () => {
+            log(`[SyncManager] Products cached to IndexedDB.`);
+            readIndexedDB();
+        };
+    }
+
+    function readIndexedDB() {
+        const tx = db.transaction(["products"], "readonly");
+        const store = tx.objectStore("products");
+        store.getAll().onsuccess = (e) => {
+            renderNoSQLList(e.target.result);
+        };
+    }
+
+    function filterCategoryNoSQL(cat) {
+        const tx = db.transaction(["products"], "readonly");
+        const store = tx.objectStore("products");
+        const index = store.index("categoryIndex");
+        index.getAll(cat).onsuccess = (e) => {
+            log(`[IndexedDB Index Query] Found ${e.target.result.length} items for category ${cat}`);
+            renderNoSQLList(e.target.result);
+        };
+    }
+
+    function renderNoSQLList(items) {
+        document.getElementById('indexedDbList').innerHTML = items.map(p => `
+            <li>[Offline Cache] ${sanitize(p.name)} - Rp${p.price} (${p.category})</li>
+        `).join('');
+    }
+
+    // ==========================================
+    // FRONTEND - BACKEND API INTEGRATION
+    // ==========================================
+    let mockProducts = [
+        { id: 101, name: "Buku Pemrograman Web", price: 85000, category: "Buku" },
+        { id: 102, name: "Mouse Gaming", price: 250000, category: "Elektronik" }
+    ];
+
+    function renderServerProducts() {
+        document.getElementById('serverProductList').innerHTML = mockProducts.map(p => `
+            <li>
+                <span>${sanitize(p.name)} - Rp${p.price}</span>
+                <button onclick='addToCart(${JSON.stringify(p)})'>+ Cart</button>
+            </li>
+        `).join('');
+    }
+
+    function createProductAPI() {
+        const name = document.getElementById('prodName').value;
+        const price = parseFloat(document.getElementById('prodPrice').value);
+        const category = document.getElementById('prodCategory').value;
+
+        if(!name || isNaN(price)) return alert("Input tidak valid!");
+
+        const newProd = { id: Date.now(), name, price, category };
+        mockProducts.push(newProd);
+        log(`[API POST /api/products] SQL Inserted: ${name}`);
+        
+        renderServerProducts();
+        saveToIndexedDB([newProd]); // Auto Two-Way Sync
+    }
+
+    function checkoutSync() {
+        const cart = getCart();
+        if(cart.length === 0) return alert("Keranjang kosong!");
+
+        if (!navigator.onLine) {
+            log(`[SyncManager] Network Offline. Sync Postponed.`);
+            return alert("Koneksi offline, transaksi ditunda.");
+        }
+
+        log(`[API POST /api/checkout] Syncing LocalStorage Cart to Server SQL DB...`);
+        alert(`Checkout Berhasil! Total: Rp${cart.reduce((a,b)=>a+b.price,0)} tersimpan di Server SQL.`);
+        clearCart();
+    }
+
+    // Network Event Listeners
+    window.addEventListener('online', () => log(`[Network Event] App Online.`));
+    window.addEventListener('offline', () => log(`[Network Event] App Offline.`));
+
+    // Initial Load
+    renderServerProducts();
+    renderCart();
+</script>
+</body>
+</html>

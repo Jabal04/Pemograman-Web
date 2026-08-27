@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Commerce Architecture (Frontend Client)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #1e6bf9;
+            --primary-gradient: linear-gradient(135deg, #0d52d4 0%, #2575fc 100%);
+            --accent-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            --danger-gradient: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+            --bg-color: #f4f7fe;
+            --card-bg: #ffffff;
+            --text-dark: #2b3674;
+            --text-gray: #707ebe;
+            --border-color: #e9edf7;
+        }
+
+        * { box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; transition: all 0.2s ease; }
+        body { background: var(--bg-color); margin: 0; padding: 24px; color: var(--text-dark); }
+        
+        /* HEADER SECTION */
+        .header {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 20px 28px;
+            border-radius: 16px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 10px 20px rgba(13, 82, 212, 0.2);
+        }
+        .header h2 { margin: 0; font-size: 1.4rem; font-weight: 700; letter-spacing: -0.5px; }
+        
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 0.85em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(4px);
+        }
+        .online { background: rgba(52, 168, 83, 0.25); border: 1px solid #34a853; color: #ffffff; }
+        .offline { background: rgba(234, 67, 53, 0.25); border: 1px solid #ea4335; color: #ffffff; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
+        /* MAIN GRID LAYOUT */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+        @media (max-width: 992px) { .grid { grid-template-columns: 1fr; } }
+
+        .card {
+            background: var(--card-bg);
+            padding: 24px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 20px rgba(112, 126, 190, 0.06);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .card h3 {
+            margin-top: 0;
+            font-size: 1.1rem;
+            color: var(--text-dark);
+            border-bottom: 2px solid var(--bg-color);
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* FORM INPUT & CONTROLS */
+        input, select {
+            width: 100%;
+            padding: 12px 14px;
+            margin-bottom: 12px;
+            border: 1.5px solid var(--border-color);
+            border-radius: 10px;
+            background: #f8fafc;
+            color: var(--text-dark);
+            font-size: 0.9rem;
+            outline: none;
+        }
+        input:focus, select:focus {
+            border-color: var(--primary);
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(30, 107, 249, 0.15);
+        }
+
+        /* BUTTON STYLES */
+        button {
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.88rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(13, 82, 212, 0.15);
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(13, 82, 212, 0.25); }
+        button:active { transform: translateY(0); }
+        
+        button.danger { background: var(--danger-gradient); box-shadow: 0 4px 12px rgba(255, 65, 108, 0.15); }
+        button.danger:hover { box-shadow: 0 6px 16px rgba(255, 65, 108, 0.25); }
+
+        button.success { background: var(--accent-gradient); box-shadow: 0 4px 12px rgba(17, 153, 142, 0.15); }
+        button.success:hover { box-shadow: 0 6px 16px rgba(17, 153, 142, 0.25); }
+
+        /* ITEM LISTS & CARDS */
+        h4 { margin: 16px 0 10px 0; font-size: 0.9rem; color: var(--text-gray); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        ul { list-style: none; padding: 0; margin: 0; flex: 1; }
+        
+        li {
+            background: #ffffff;
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+        }
+        li:hover { border-color: var(--primary); transform: translateX(2px); }
+        
+        .item-info { display: flex; flex-direction: column; gap: 2px; }
+        .item-name { font-weight: 600; font-size: 0.92rem; color: var(--text-dark); }
+        .item-sub { font-size: 0.8rem; color: var(--text-gray); }
+
+        /* LOG SYSTEM */
+        .log-box {
+            background: #0f172a;
+            color: #38edf6;
+            padding: 16px;
+            font-family: 'Courier New', Courier, monospace;
+            height: 140px;
+            overflow-y: auto;
+            border-radius: 12px;
+            font-size: 0.82rem;
+            line-height: 1.6;
+            border: 1px solid #1e293b;
+        }
+
+        .btn-group { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+        .btn-group button { flex: 1; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h2>E-Commerce Architecture (Frontend Client)</h2>
+    <div id="connectionStatus" class="status-badge online">
+        <span class="status-dot"></span> <span id="statusText">Status: ONLINE</span>
+    </div>
+</div>
+
+<div class="grid">
+    <!-- CARD 1: SQL DATABASE -->
+    <div class="card">
+        <h3>1. Katalog & Form Produk (SQL API)</h3>
+        <form id="productForm">
+            <input type="text" id="prodName" placeholder="Nama Produk" required>
+            <input type="number" id="prodPrice" placeholder="Harga (Rp)" required>
+            <select id="prodCategory">
+                <option value="Buku">Buku</option>
+                <option value="Elektronik">Elektronik</option>
+                <option value="Pakaian">Pakaian</option>
+            </select>
+            <button type="button" style="width: 100%;" onclick="addProductToAPI()">Kirim ke Backend (Insert SQL)</button>
+        </form>
+        <h4>Daftar Produk Server (SQL):</h4>
+        <ul id="sqlProductList"></ul>
+    </div>
+
+    <!-- CARD 2: LOCALSTORAGE STATE -->
+    <div class="card">
+        <h3>2. State Keranjang (LocalStorage)</h3>
+        <h4>Keranjang Belanja Saat Ini:</h4>
+        <ul id="cartList"></ul>
+        <div class="btn-group" style="margin-top: 15px;">
+            <button class="danger" onclick="clearCart()">Kosongkan</button>
+            <button class="success" onclick="checkoutSync()">Checkout & Sync</button>
+        </div>
+    </div>
+
+    <!-- CARD 3: NOSQL INDEXEDDB -->
+    <div class="card">
+        <h3>3. Cache Offline (IndexedDB NoSQL)</h3>
+        <div class="btn-group">
+            <button onclick="filterIndexedDB('Buku')">Filter: Buku</button>
+            <button onclick="loadIndexedDB()" style="background: #475569;">Tampilkan Semua</button>
+        </div>
+        <h4>Data Object Store 'products':</h4>
+        <ul id="indexedDbList"></ul>
+    </div>
+
+    <!-- CARD 4: SYSTEM LOG -->
+    <div class="card" style="grid-column: 1 / -1;">
+        <h3>4. System Log & Sync Manager</h3>
+        <div class="log-box" id="sysLog"></div>
+    </div>
+</div>
+
+<script>
+    const API_URL = "http://localhost:3000/api";
+
+    function sanitize(str) {
+        return str.replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+    }
+
+    function log(msg) {
+        const box = document.getElementById('sysLog');
+        box.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}<br>`;
+        box.scrollTop = box.scrollHeight;
+    }
+
+    // LOCALSTORAGE
+    function getCart() { return JSON.parse(localStorage.getItem('cart_state')) || []; }
+
+    function addToCart(product) {
+        const cart = getCart();
+        cart.push(product);
+        localStorage.setItem('cart_state', JSON.stringify(cart));
+        log(`[LocalStorage] Item ditambah: "${product.name}"`);
+        renderCart();
+    }
+
+    function clearCart() {
+        localStorage.removeItem('cart_state');
+        log(`[LocalStorage] Keranjang dikosongkan.`);
+        renderCart();
+    }
+
+    function renderCart() {
+        const cart = getCart();
+        const list = document.getElementById('cartList');
+        list.innerHTML = cart.length === 0 ? '<p style="color:var(--text-gray); font-size:0.9rem;">Keranjang kosong.</p>' : cart.map((item, i) => `
+            <li>
+                <div class="item-info">
+                    <span class="item-name">${sanitize(item.name)}</span>
+                    <span class="item-sub">Rp${item.price.toLocaleString()}</span>
+                </div>
+                <button class="danger" style="padding: 6px 10px; font-size:0.75rem;" onclick="removeFromCart(${i})">Hapus</button>
+            </li>
+        `).join('');
+    }
+
+    function removeFromCart(index) {
+        const cart = getCart();
+        cart.splice(index, 1);
+        localStorage.setItem('cart_state', JSON.stringify(cart));
+        renderCart();
+    }
+
+    // INDEXEDDB
+    let db;
+    const dbReq = indexedDB.open("EcommerceNoSQLDB", 1);
+
+    dbReq.onupgradeneeded = (e) => {
+        db = e.target.result;
+        if (!db.objectStoreNames.contains("products")) {
+            const store = db.createObjectStore("products", { keyPath: "id" });
+            store.createIndex("categoryIndex", "category", { unique: false });
+            log(`[IndexedDB] Schema dibuat (Index: categoryIndex).`);
+        }
+    };
+
+    dbReq.onsuccess = (e) => {
+        db = e.target.result;
+        log(`[IndexedDB] Terhubung successfully.`);
+        fetchProductsFromAPI();
+    };
+
+    function saveToIndexedDB(products) {
+        if (!db) return;
+        const tx = db.transaction(["products"], "readwrite");
+        const store = tx.objectStore("products");
+        products.forEach(p => store.put(p));
+        tx.oncomplete = () => {
+            log(`[SyncManager] Synced SQL Data -> IndexedDB Cache.`);
+            loadIndexedDB();
+        };
+    }
+
+    function loadIndexedDB() {
+        const tx = db.transaction(["products"], "readonly");
+        const store = tx.objectStore("products");
+        store.getAll().onsuccess = (e) => {
+            renderNoSQLList(e.target.result);
+            log(`[IndexedDB] READ ALL Executed. Total: ${e.target.result.length} items.`);
+        };
+    }
+
+    function filterIndexedDB(category) {
+        const tx = db.transaction(["products"], "readonly");
+        const store = tx.objectStore("products");
+        const index = store.index("categoryIndex");
+        index.getAll(category).onsuccess = (e) => {
+            renderNoSQLList(e.target.result);
+            log(`[IndexedDB Index Query] Ditemukan ${e.target.result.length} item untuk kategori: ${category}`);
+        };
+    }
+
+    function renderNoSQLList(items) {
+        document.getElementById('indexedDbList').innerHTML = items.map(p => `
+            <li>
+                <div class="item-info">
+                    <span class="item-name">[Offline Data] ${sanitize(p.name)}</span>
+                    <span class="item-sub">Rp${p.price.toLocaleString()} (${p.category})</span>
+                </div>
+            </li>
+        `).join('');
+    }
+
+    // API SYNC
+    async function fetchProductsFromAPI() {
+        let products = [
+            { id: 101, name: "Buku Pemrograman Web", price: 85000, category: "Buku" },
+            { id: 102, name: "Mouse Gaming", price: 250000, category: "Elektronik" }
+        ];
+        log(`[Mock Fetch] Data produk dimuat dari SQL Server.`);
+        renderServerProducts(products);
+        saveToIndexedDB(products);
+    }
+
+    function addProductToAPI() {
+        const name = document.getElementById('prodName').value;
+        const price = parseFloat(document.getElementById('prodPrice').value);
+        const category = document.getElementById('prodCategory').value;
+
+        if (!name || isNaN(price)) return alert("Isi form dengan benar!");
+
+        const newProd = { id: Date.now(), name: sanitize(name), price, category };
+        log(`[SQL Server] INSERT INTO products VALUES (${newProd.id}, '${newProd.name}', ${price})`);
+        
+        saveToIndexedDB([newProd]);
+        
+        const list = document.getElementById('sqlProductList');
+        list.innerHTML += `
+            <li>
+                <div class="item-info">
+                    <span class="item-name">${newProd.name}</span>
+                    <span class="item-sub">Rp${newProd.price.toLocaleString()} (${newProd.category})</span>
+                </div>
+                <button style="padding: 6px 12px; font-size:0.8rem;" onclick='addToCart(${JSON.stringify(newProd)})'>+ Keranjang</button>
+            </li>
+        `;
+    }
+
+    function renderServerProducts(products) {
+        document.getElementById('sqlProductList').innerHTML = products.map(p => `
+            <li>
+                <div class="item-info">
+                    <span class="item-name">${sanitize(p.name)}</span>
+                    <span class="item-sub">Rp${p.price.toLocaleString()} (${p.category})</span>
+                </div>
+                <button style="padding: 6px 12px; font-size:0.8rem;" onclick='addToCart(${JSON.stringify(p)})'>+ Keranjang</button>
+            </li>
+        `).join('');
+    }
+
+    function checkoutSync() {
+        const cart = getCart();
+        if (cart.length === 0) return alert("Keranjang kosong!");
+
+        if (!navigator.onLine) {
+            log(`[SyncManager] OFFLINE DETECTED! Transaksi ditunda.`);
+            return alert("Koneksi offline, transaksi ditunda.");
+        }
+
+        const total = cart.reduce((sum, item) => sum + item.price, 0);
+        log(`[SyncManager] TWO-WAY SYNC COMPLETED: Created Order ID #${Date.now()} di SQL Server.`);
+        alert(`Checkout Berhasil! Total Rp${total.toLocaleString()} tersimpan di Server SQL.`);
+        clearCart();
+    }
+
+    // NETWORK STATUS MONITORING
+    window.addEventListener('online', () => {
+        const badge = document.getElementById('connectionStatus');
+        badge.className = "status-badge online";
+        document.getElementById('statusText').innerText = "Status: ONLINE";
+        log(`[Event Network] App Back Online. Resolving pending sync...`);
+    });
+
+    window.addEventListener('offline', () => {
+        const badge = document.getElementById('connectionStatus');
+        badge.className = "status-badge offline";
+        document.getElementById('statusText').innerText = "Status: OFFLINE";
+        log(`[Event Network] App Connection Lost. Switched to Offline-First Mode.`);
+    });
+
+    renderCart();
+</script>
+</body>
+</html>
